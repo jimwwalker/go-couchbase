@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/couchbase/go-couchbase"
-	"github.com/couchbase/go-couchbase/cbdatasource"
+	"../../cbdatasource"
 	"github.com/couchbase/gomemcached"
 )
 
@@ -243,6 +243,14 @@ func (r *ExampleReceiver) Rollback(vbucketId uint16, rollbackSeq uint64) error {
 	}
 
 	return fmt.Errorf("unimpl-rollback")
+}
+
+func (r *ExampleReceiver) SystemEvent(vbucketID uint16, key []byte, req *gomemcached.MCRequest) error {
+	if *verbose > 1 {
+		log.Printf("system-event: vbucketId: %d, key: %s,  req: %#v",
+			vbucketID, key, req)
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------

@@ -40,6 +40,7 @@ import (
 
 const FlagOpenProducer = uint32(1)
 const FlagOpenIncludeXattrs = uint32(4)
+const FlagOpenIncludeCollections = uint32(16)
 const FeatureEnabledDataType = uint16(0x01)
 const FeatureEnabledXAttrs = uint16(0x06)
 const FeatureEnabledXError = uint16(0x07)
@@ -119,6 +120,10 @@ type Receiver interface {
 	// rollback during stream initialization.  Note that both data and
 	// metadata should be rolled back.
 	Rollback(vbucketID uint16, rollbackSeq uint64) error
+
+	// Invoked by the BucketDataSource when the datasource sends a DCP
+	// system event packet
+	SystemEvent(vbucketID uint16, key []byte, r *gomemcached.MCRequest) error
 }
 
 // A ReceiverEx interface is an advanced Receiver interface that's
@@ -941,6 +946,7 @@ func (d *bucketDataSource) worker(server string, workerCh chan []uint16) int {
 	// Server handshakes.
 	var openUprFlags uint32
 	openUprFlags, err = serverHandShake(client, d)
+	openUprFlags |= FlagOpenIncludeCollections
 	if err != nil {
 		// Just bump the stats and continue with errors logged
 		// since even at feature mismatch the openConn can proceed.
@@ -1184,6 +1190,8 @@ func (d *bucketDataSource) worker(server string, workerCh chan []uint16) int {
 				}
 
 				atomic.AddUint64(&d.stats.TotUPRDataChangeOk, 1)
+			} else if pkt.Opcode == 0x5f { // gomemcached.DCP_SYSTEM_EVENT  {
+				err = d.receiver.SystemEvent(pkt.VBucket, pkt.Key, &pkt)
 			} else {
 				tr.Add(fmt.Sprintf("%d", pkt.Opcode), nil)
 
@@ -1901,12 +1909,11 @@ func UPROpen(mc *memcached.Client, name string,
 		Extras: make([]byte, 8),
 	}
 	bufSize := option.FeedBufferSizeBytes
-	noopInterval := option.NoopTimeIntervalSecs
+	noopInterval := 5 //option.NoopTimeIntervalSecs
 
 	binary.BigEndian.PutUint32(rq.Extras[:4], 0) // First 4 bytes are reserved.
-	flags := FlagOpenProducer | openFlags        // NOTE: 1 for producer, 0 for consumer.
+	flags := FlagOpenProducer | openFlags | 16       // NOTE: 1 for producer, 0 for consumer.
 	binary.BigEndian.PutUint32(rq.Extras[4:], flags)
-
 	if err := mc.Transmit(rq); err != nil {
 		return fmt.Errorf("UPROpen transmit, err: %v", err)
 	}
