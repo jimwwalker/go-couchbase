@@ -210,6 +210,9 @@ type BucketDataSourceOptions struct {
 	// during DCP connection set up.
 	// Defaulted to false to keep it backward compatible.
 	IncludeXAttrs bool
+
+	// JSON data describing a DCP collection filter - empty string for none
+	CollectionFilter string
 }
 
 // AllServerURLsConnectBucketError is the error type passed to
@@ -1907,6 +1910,7 @@ func UPROpen(mc *memcached.Client, name string,
 		Key:    []byte(name),
 		Opaque: 0xf00d1234,
 		Extras: make([]byte, 8),
+		Body: []byte(option.CollectionFilter),
 	}
 	bufSize := option.FeedBufferSizeBytes
 	noopInterval := 5 //option.NoopTimeIntervalSecs

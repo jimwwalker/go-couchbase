@@ -71,6 +71,9 @@ var optionFeedBufferSizeBytes = flag.Int("optionFeedBufferSizeBytes", 20000000,
 var optionFeedBufferAckThreshold = flag.Float64("optionFeedBufferAckThreshold", 0.2,
 	"percent (0-to-1.0) of buffer size before sending a flow control buffer-ack")
 
+var collection = flag.String("collection", "",
+	"Optional collection name to stream")
+
 var bds cbdatasource.BucketDataSource
 
 func main() {
@@ -107,6 +110,11 @@ func main() {
 		log.Fatalf("error: optionFeedBufferSizeBytes must be >= 0")
 	}
 
+
+	var collectionFilter = "";
+	if (len(*collection) > 0) {
+		collectionFilter = "{\"collections\":[\"" + *collection + "\"]}"
+	}
 	options := &cbdatasource.BucketDataSourceOptions{
 		ClusterManagerBackoffFactor: float32(*optionClusterManagerBackoffFactor),
 		ClusterManagerSleepInitMS:   *optionClusterManagerSleepInitMS,
@@ -118,6 +126,7 @@ func main() {
 
 		FeedBufferSizeBytes:    uint32(*optionFeedBufferSizeBytes),
 		FeedBufferAckThreshold: float32(*optionFeedBufferAckThreshold),
+		CollectionFilter: collectionFilter,
 	}
 
 	var auth couchbase.AuthHandler = nil
