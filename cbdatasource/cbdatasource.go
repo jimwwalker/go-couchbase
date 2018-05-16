@@ -1176,14 +1176,16 @@ func (d *bucketDataSource) worker(server string, workerCh chan []uint16) int {
 
 				if pkt.Opcode == gomemcached.UPR_MUTATION {
 					atomic.AddUint64(&d.stats.TotUPRDataChangeMutation, 1)
-					err = d.receiver.DataUpdate(vbucketID, pkt.Key, "", seq, &pkt)
+					clen := pkt.Extras[17]
+					err = d.receiver.DataUpdate(vbucketID, pkt.Key, string(pkt.Key[:clen]), seq, &pkt)
 				} else {
 					if pkt.Opcode == gomemcached.UPR_DELETION {
 						atomic.AddUint64(&d.stats.TotUPRDataChangeDeletion, 1)
 					} else {
 						atomic.AddUint64(&d.stats.TotUPRDataChangeExpiration, 1)
 					}
-					err = d.receiver.DataDelete(vbucketID, pkt.Key, "", seq, &pkt)
+					clen := pkt.Extras[31]
+					err = d.receiver.DataDelete(vbucketID, pkt.Key, string(pkt.Key[:clen]), seq, &pkt)
 				}
 
 				if err != nil {
