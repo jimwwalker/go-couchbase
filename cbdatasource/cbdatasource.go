@@ -81,13 +81,13 @@ type Receiver interface {
 	// Invoked by the BucketDataSource when it has received a mutation
 	// from the data source.  Receiver implementation is responsible
 	// for making its own copies of the key and request.
-	DataUpdate(vbucketID uint16, key []byte, seq uint64,
+	DataUpdate(vbucketID uint16, key []byte, collection string, seq uint64,
 		r *gomemcached.MCRequest) error
 
 	// Invoked by the BucketDataSource when it has received a deletion
 	// or expiration from the data source.  Receiver implementation is
 	// responsible for making its own copies of the key and request.
-	DataDelete(vbucketID uint16, key []byte, seq uint64,
+	DataDelete(vbucketID uint16, key []byte, collection string, seq uint64,
 		r *gomemcached.MCRequest) error
 
 	// An callback invoked by the BucketDataSource when it has
@@ -123,7 +123,7 @@ type Receiver interface {
 
 	// Invoked by the BucketDataSource when the datasource sends a DCP
 	// system event packet
-	SystemEvent(vbucketID uint16, key []byte, r *gomemcached.MCRequest) error
+	SystemEvent(vbucketID uint16, key []byte, seqno uint64, event uint32, r *gomemcached.MCRequest) error
 }
 
 // A ReceiverEx interface is an advanced Receiver interface that's
@@ -1176,14 +1176,14 @@ func (d *bucketDataSource) worker(server string, workerCh chan []uint16) int {
 
 				if pkt.Opcode == gomemcached.UPR_MUTATION {
 					atomic.AddUint64(&d.stats.TotUPRDataChangeMutation, 1)
-					err = d.receiver.DataUpdate(vbucketID, pkt.Key, seq, &pkt)
+					err = d.receiver.DataUpdate(vbucketID, pkt.Key, "", seq, &pkt)
 				} else {
 					if pkt.Opcode == gomemcached.UPR_DELETION {
 						atomic.AddUint64(&d.stats.TotUPRDataChangeDeletion, 1)
 					} else {
 						atomic.AddUint64(&d.stats.TotUPRDataChangeExpiration, 1)
 					}
-					err = d.receiver.DataDelete(vbucketID, pkt.Key, seq, &pkt)
+					err = d.receiver.DataDelete(vbucketID, pkt.Key, "", seq, &pkt)
 				}
 
 				if err != nil {
@@ -1194,7 +1194,10 @@ func (d *bucketDataSource) worker(server string, workerCh chan []uint16) int {
 
 				atomic.AddUint64(&d.stats.TotUPRDataChangeOk, 1)
 			} else if pkt.Opcode == 0x5f { // gomemcached.DCP_SYSTEM_EVENT  {
-				err = d.receiver.SystemEvent(pkt.VBucket, pkt.Key, &pkt)
+				seqno := binary.BigEndian.Uint64(pkt.Extras[:8])
+				event := binary.BigEndian.Uint32(pkt.Extras[8:12])
+
+				err = d.receiver.SystemEvent(pkt.VBucket, pkt.Key, seqno, event, &pkt)
 			} else {
 				tr.Add(fmt.Sprintf("%d", pkt.Opcode), nil)
 

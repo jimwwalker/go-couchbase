@@ -180,9 +180,16 @@ func (r *ExampleReceiver) OnError(err error) {
 	reportStats(bds, true)
 }
 
-func (r *ExampleReceiver) DataUpdate(vbucketId uint16, key []byte, seq uint64,
-	req *gomemcached.MCRequest) error {
-	if *verbose > 1 {
+func (r *ExampleReceiver) DataUpdate(
+								vbucketId uint16,
+								key []byte,
+								collection string,
+								seq uint64,
+								req *gomemcached.MCRequest) error {
+	if *verbose == 2 {
+		log.Printf("data-update: vbucketId: %d, key: %s, seq: %x",
+			vbucketId, key, seq)
+	} else if *verbose > 2 {
 		log.Printf("data-update: vbucketId: %d, key: %s, seq: %x, req: %#v",
 			vbucketId, key, seq, req)
 	}
@@ -190,9 +197,16 @@ func (r *ExampleReceiver) DataUpdate(vbucketId uint16, key []byte, seq uint64,
 	return nil
 }
 
-func (r *ExampleReceiver) DataDelete(vbucketId uint16, key []byte, seq uint64,
-	req *gomemcached.MCRequest) error {
-	if *verbose > 1 {
+func (r *ExampleReceiver) DataDelete(
+								vbucketId uint16,
+								key []byte,
+								collection string,
+								seq uint64,
+								req *gomemcached.MCRequest) error {
+	if *verbose == 2 {
+		log.Printf("data-delete: vbucketId: %d, key: %s, seq: %x",
+			vbucketId, key, seq)
+	} else if *verbose > 2 {
 		log.Printf("data-delete: vbucketId: %d, key: %s, seq: %x, req: %#v",
 			vbucketId, key, seq, req)
 	}
@@ -254,10 +268,24 @@ func (r *ExampleReceiver) Rollback(vbucketId uint16, rollbackSeq uint64) error {
 	return fmt.Errorf("unimpl-rollback")
 }
 
-func (r *ExampleReceiver) SystemEvent(vbucketID uint16, key []byte, req *gomemcached.MCRequest) error {
+func (r *ExampleReceiver) SystemEvent(
+									vbucketId uint16,
+									key []byte,
+									seqno uint64,
+									event uint32,
+									req *gomemcached.MCRequest) error {
 	if *verbose > 1 {
-		log.Printf("system-event: vbucketId: %d, key: %s,  req: %#v",
-			vbucketID, key, req)
+		var eventString = "unknown"
+		if (event == 0) {
+			eventString = "collection-created"
+		} else if (event == 1) {
+			eventString = "collection-deleted"
+		} else if (event == 2) {
+			eventString = "separator-changed"
+		}
+
+		log.Printf("system-event: vbucketId: %d, %s @ seqno %x",
+					vbucketId, eventString, seqno)
 	}
 	return nil
 }
