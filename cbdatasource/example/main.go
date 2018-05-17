@@ -187,8 +187,8 @@ func (r *ExampleReceiver) DataUpdate(
 								seq uint64,
 								req *gomemcached.MCRequest) error {
 	if *verbose == 2 {
-		log.Printf("data-update: vbucketId: %d, key: %s, seq: %x",
-			vbucketId, key, seq)
+		log.Printf("data-update: vbucketId: %d, key: %s from collection: %s, seq: %x",
+			vbucketId, key, collection, seq)
 	} else if *verbose > 2 {
 		log.Printf("data-update: vbucketId: %d, key: %s, seq: %x, req: %#v",
 			vbucketId, key, seq, req)
@@ -284,8 +284,8 @@ func (r *ExampleReceiver) SystemEvent(
 			eventString = "separator-changed"
 		}
 
-		log.Printf("system-event: vbucketId: %d, %s @ seqno %x",
-					vbucketId, eventString, seqno)
+		log.Printf("system-event: vbucketId: %d, %s %s @ seqno %x",
+					vbucketId, key, eventString, seqno)
 	}
 	return nil
 }
@@ -311,7 +311,7 @@ var lastStats = &cbdatasource.BucketDataSourceStats{}
 var currStats = &cbdatasource.BucketDataSourceStats{}
 
 func reportStats(b cbdatasource.BucketDataSource, force bool) {
-	if *verbose <= 0 {
+	if *verbose <= 3 {
 		return
 	}
 
